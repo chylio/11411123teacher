@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>活動報名現況儀表板</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background-color: #f7f9fc; /* Light background */
+        }
+        .metric-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'vibrant-purple': '#8B5CF6',
+                        'vibrant-pink': '#EC4899',
+                        'vibrant-yellow': '#FCD34D',
+                        'deep-blue': '#1E3A8A'
+                    }
+                }
+            }
+        }
+        
+        // 🚨 IMPORTANT: 這個 URL 必須是您部署的 Apps Script Web App URL
+        // 它會用於發送 GET 請求獲取報名數據
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVqT7XhAM9n4KItbOzZO6tyGeE1Spp8rnbZ22m_b1nTkxMEAbKM1M6Onc4Jk7Of-d1bg/exec'; 
+
+        // 載入儀表板資料
+        async function loadDashboard() {
+            const statusText = document.getElementById('statusText');
+            const dashboardContent = document.getElementById('dashboardContent');
+            
+            // 顯示載入狀態
+            statusText.textContent = '讀取報名資料中... 請稍候 (確保 Apps Script 已部署 doGet 函數)';
+            statusText.classList.remove('hidden');
+            dashboardContent.classList.add('hidden');
+            
+            console.log('--- 嘗試讀取 Apps Script 資料 ---');
+            console.log('Apps Script URL:', APPS_SCRIPT_URL);
+
+            try {
+                // 發送 GET 請求到 Apps Script
+                // 注意：在瀏覽器中讀取 Apps Script JSON 資料常遇到 CORS 問題
+                // 我們使用 'no-cors' 模式來避免瀏覽器阻擋，但這要求 Apps Script 必須正確配置 ContentService
+                const response = await fetch(APPS_SCRIPT_URL);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
+                }
+                
+                // 由於 'no-cors' 模式會隱藏實際狀態，且 JSON 讀取可能會失敗，我們嘗試直接讀取文本並手動解析
+                const text = await response.text();
+                
+                // 嘗試解析 JSON
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error("JSON 解析失敗，可能Apps Script響應格式不正確或CORS問題導致。", text);
+                    throw new Error("Apps Script 響應格式錯誤，請確保 doGet 返回的是 ContentService.MimeType.JSON");
+                }
+
+                if (data.error) {
+                    throw new Error(`Apps Script 錯誤: ${data.error}`);
+                }
+
+                // 處理並顯示資料
+                renderDashboard(data);
+                
+            } catch (error) {
+                console.error("載入儀表板資料失敗:", error);
+                statusText.textContent = `載入資料失敗: ${error.message}。請檢查 Apps Script 的部署和網絡連接。`;
+                statusText.classList.remove('text-vibrant-purple');
+                statusText.classList.add('text-red-600', 'bg-red-100', 'p-4', 'rounded-lg');
+            } finally {
+                 // 隱藏狀態訊息，顯示內容
+                statusText.classList.add('hidden');
+                dashboardContent.classList.remove('hidden');
+                document.getElementById('lastUpdated').textContent = new Date().toLocaleString('zh-TW');
+            }
+        }
+
+        // 處理資料並渲染儀表板
+        function renderDashboard(data) {
+            const totalRegistrations = data.totalRegistrations;
+            const registrationData = data.data || [];
+            
+            // 1. 總報名人數
+            document.getElementById('totalCount').textContent = totalRegistrations;
+
+            // 2. 統計職稱分佈 (Title: 標頭名稱)
+            const titleCounts = countBy(registrationData, '職稱');
+            renderDistribution('titleDistribution', titleCounts, totalRegistrations);
+
+            // 3. 統計單位分佈 (Unit: 標頭名稱)
+            const unitCounts = countBy(registrationData, '單位');
+            renderDistribution('unitDistribution', unitCounts, totalRegistrations, 10); // 只顯示前 10 個單位
+        }
+
+        // 輔助函數：統計分佈
+        function countBy(dataArray, key) {
+            return dataArray.reduce((acc, item) => {
+                const value = item[key] ? String(item[key]).trim() : '未填寫';
+                acc[value] = (acc[value] || 0) + 1;
+                return acc;
+            }, {});
+        }
+
+        // 輔助函數：渲染分佈圖表 (使用簡單的條狀圖)
+        function renderDistribution(elementId, counts, total, limit = Infinity) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = ''; // 清空舊內容
+            
+            // 根據數量排序 (降冪)
+            let sortedCounts = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+            // 限制顯示的項目數
+            const limitedCounts = sortedCounts.slice(0, limit);
+            const otherCount = sortedCounts.slice(limit).reduce((sum, [, count]) => sum + count, 0);
+
+            limitedCounts.forEach(([label, count]) => {
+                const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+                
+                // 決定顏色 (可選)
+                let barColor = 'bg-vibrant-purple';
+                if (elementId === 'unitDistribution') {
+                    barColor = 'bg-vibrant-yellow';
+                } else if (label.includes('醫師')) {
+                    barColor = 'bg-vibrant-pink';
+                }
+
+                const bar = `
+                    <div class="mb-3">
+                        <div class="flex justify-between text-sm font-medium text-gray-700">
+                            <span>${label}</span>
+                            <span>${count} 人 (${percentage}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div class="h-3 rounded-full ${barColor} transition-all duration-700 ease-out" 
+                                 style="width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += bar;
+            });
+            
+            if (otherCount > 0) {
+                 const otherPercentage = total > 0 ? ((otherCount / total) * 100).toFixed(1) : 0;
+                 const otherBar = `
+                    <div class="mb-3 opacity-60">
+                        <div class="flex justify-between text-sm font-medium text-gray-700">
+                            <span>其他單位/職稱...</span>
+                            <span>${otherCount} 人 (${otherPercentage}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div class="h-3 rounded-full bg-gray-500 transition-all duration-700 ease-out" 
+                                 style="width: ${otherPercentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += otherBar;
+            }
+        }
+        
+        // 初始化載入
+        window.onload = loadDashboard;
+    </script>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        
+        <!-- Header -->
+        <header class="text-center mb-10 p-6 rounded-xl bg-white shadow-lg">
+            <h1 class="text-4xl font-extrabold text-deep-blue">
+                奇美月─教學共識營 報名現況儀表板
+            </h1>
+            <p class="text-gray-500 mt-2">最後更新時間: <span id="lastUpdated">${new Date().toLocaleString('zh-TW')}</span></p>
+            <button onclick="loadDashboard()" 
+                    class="mt-4 px-6 py-2 bg-vibrant-pink text-white font-bold rounded-full shadow-md hover:bg-vibrant-purple transition duration-200 transform hover:scale-105">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.126a8.974 8.974 0 00-2.486 3.966c-.322 1.353-.418 2.766-.275 4.14a1 1 0 001.986.115c-.093-1.071-.027-2.181.203-3.266A7.07 7.07 0 0110 5a7.07 7.07 0 015.568 2.875c.23.685.296 1.352.203 2.053a1 1 0 101.986.115c.143-1.374.047-2.787-.275-4.14A8.975 8.975 0 0015 3.126V3a1 1 0 012 0v2a1 1 0 01-1 1h-2a1 1 0 010-2h.586A8.966 8.966 0 0010 3.013 8.966 8.966 0 004.414 5H5a1 1 0 010 2H3a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                重新整理數據
+            </button>
+        </header>
+
+        <!-- Status Message -->
+        <div id="statusText" class="text-center text-lg font-medium text-vibrant-purple hidden"></div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" class="hidden">
+            
+            <!-- 總報名人數 Metric Card -->
+            <div class="mb-8">
+                <div class="metric-card bg-white p-8 rounded-xl border-b-8 border-vibrant-pink">
+                    <p class="text-xl font-semibold text-gray-500">總報名人數</p>
+                    <p id="totalCount" class="text-7xl font-extrabold text-vibrant-pink mt-4">0</p>
+                    <p class="mt-2 text-gray-500">已成功寫入 Google Sheets 的總記錄數</p>
+                </div>
+            </div>
+
+            <!-- 分佈圖表 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- 職稱分佈 -->
+                <div class="metric-card bg-white p-6 rounded-xl border-t-8 border-vibrant-purple">
+                    <h2 class="text-2xl font-bold text-deep-blue mb-6 border-b pb-2">📊 職稱 (Title) 分佈</h2>
+                    <div id="titleDistribution" class="space-y-4">
+                        <!-- Chart data will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- 單位分佈 -->
+                <div class="metric-card bg-white p-6 rounded-xl border-t-8 border-vibrant-yellow">
+                    <h2 class="text-2xl font-bold text-deep-blue mb-6 border-b pb-2">🏥 單位 (Unit) 分佈 (前十名)</h2>
+                    <div id="unitDistribution" class="space-y-4">
+                        <!-- Chart data will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+
+    </div>
+
+</body>
+</html>

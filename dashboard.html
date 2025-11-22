@@ -35,62 +35,61 @@
         }
         
         // 🚨 IMPORTANT: 這個 URL 必須是您部署的 Apps Script Web App URL
-        // 它會用於發送 GET 請求獲取報名數據
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVqT7XhAM9n4KItbOzZO6tyGeE1Spp8rnbZ22m_b1nTkxMEAbKM1M6Onc4Jk7Of-d1bg/exec'; 
+        const CALLBACK_NAME = 'handleAppsScriptResponse';
 
-        // 載入儀表板資料
-        async function loadDashboard() {
+        // JSONP 回調函數 (必須是全域可存取)
+        window[CALLBACK_NAME] = function(data) {
             const statusText = document.getElementById('statusText');
             const dashboardContent = document.getElementById('dashboardContent');
-            
-            // 顯示載入狀態
-            statusText.textContent = '讀取報名資料中... 請稍候 (確保 Apps Script 已部署 doGet 函數)';
-            statusText.classList.remove('hidden');
-            dashboardContent.classList.add('hidden');
-            
-            console.log('--- 嘗試讀取 Apps Script 資料 ---');
-            console.log('Apps Script URL:', APPS_SCRIPT_URL);
 
             try {
-                // 發送 GET 請求到 Apps Script
-                // 注意：在瀏覽器中讀取 Apps Script JSON 資料常遇到 CORS 問題
-                // 我們使用 'no-cors' 模式來避免瀏覽器阻擋，但這要求 Apps Script 必須正確配置 ContentService
-                const response = await fetch(APPS_SCRIPT_URL);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP 錯誤! 狀態碼: ${response.status}`);
-                }
-                
-                // 由於 'no-cors' 模式會隱藏實際狀態，且 JSON 讀取可能會失敗，我們嘗試直接讀取文本並手動解析
-                const text = await response.text();
-                
-                // 嘗試解析 JSON
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    console.error("JSON 解析失敗，可能Apps Script響應格式不正確或CORS問題導致。", text);
-                    throw new Error("Apps Script 響應格式錯誤，請確保 doGet 返回的是 ContentService.MimeType.JSON");
-                }
-
                 if (data.error) {
                     throw new Error(`Apps Script 錯誤: ${data.error}`);
                 }
-
+                
                 // 處理並顯示資料
                 renderDashboard(data);
                 
-            } catch (error) {
-                console.error("載入儀表板資料失敗:", error);
-                statusText.textContent = `載入資料失敗: ${error.message}。請檢查 Apps Script 的部署和網絡連接。`;
-                statusText.classList.remove('text-vibrant-purple');
-                statusText.classList.add('text-red-600', 'bg-red-100', 'p-4', 'rounded-lg');
-            } finally {
-                 // 隱藏狀態訊息，顯示內容
+                // 成功後隱藏狀態訊息，顯示內容
                 statusText.classList.add('hidden');
                 dashboardContent.classList.remove('hidden');
                 document.getElementById('lastUpdated').textContent = new Date().toLocaleString('zh-TW');
+
+            } catch (error) {
+                console.error("處理儀表板資料失敗:", error);
+                statusText.textContent = `載入資料失敗: ${error.message}。請檢查 Apps Script 的部署和分頁名稱。`;
+                statusText.classList.remove('text-vibrant-purple', 'hidden');
+                statusText.classList.add('text-red-600', 'bg-red-100', 'p-4', 'rounded-lg');
+                dashboardContent.classList.add('hidden');
             }
+             // 清理 JSONP 腳本標籤
+            const script = document.getElementById('jsonp-script');
+            if (script) script.remove();
+        };
+
+        // 載入儀表板資料 (使用 JSONP)
+        function loadDashboard() {
+            const statusText = document.getElementById('statusText');
+            
+            // 顯示載入狀態
+            statusText.textContent = '讀取報名資料中... 請稍候 (使用 JSONP 模式)';
+            statusText.classList.remove('hidden');
+
+            console.log('--- 嘗試讀取 Apps Script 資料 (JSONP) ---');
+            
+            // 建立帶有 callback 參數的 URL
+            const url = `${APPS_SCRIPT_URL}?callback=${CALLBACK_NAME}`;
+            
+            // 移除舊的腳本標籤 (如果有)
+            const oldScript = document.getElementById('jsonp-script');
+            if (oldScript) oldScript.remove();
+
+            // 動態建立新的腳本標籤，觸發 JSONP 請求
+            const script = document.createElement('script');
+            script.id = 'jsonp-script';
+            script.src = url;
+            document.head.appendChild(script);
         }
 
         // 處理資料並渲染儀表板
@@ -189,13 +188,24 @@
                 奇美月─教學共識營 報名現況儀表板
             </h1>
             <p class="text-gray-500 mt-2">最後更新時間: <span id="lastUpdated">${new Date().toLocaleString('zh-TW')}</span></p>
-            <button onclick="loadDashboard()" 
-                    class="mt-4 px-6 py-2 bg-vibrant-pink text-white font-bold rounded-full shadow-md hover:bg-vibrant-purple transition duration-200 transform hover:scale-105">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.126a8.974 8.974 0 00-2.486 3.966c-.322 1.353-.418 2.766-.275 4.14a1 1 0 001.986.115c-.093-1.071-.027-2.181.203-3.266A7.07 7.07 0 0110 5a7.07 7.07 0 015.568 2.875c.23.685.296 1.352.203 2.053a1 1 0 101.986.115c.143-1.374.047-2.787-.275-4.14A8.975 8.975 0 0015 3.126V3a1 1 0 012 0v2a1 1 0 01-1 1h-2a1 1 0 010-2h.586A8.966 8.966 0 0010 3.013 8.966 8.966 0 004.414 5H5a1 1 0 010 2H3a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd" />
-                </svg>
-                重新整理數據
-            </button>
+            
+            <div class="mt-4 flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4">
+                <button onclick="loadDashboard()" 
+                        class="px-6 py-2 bg-vibrant-pink text-white font-bold rounded-full shadow-md hover:bg-vibrant-purple transition duration-200 transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.126a8.974 8.974 0 00-2.486 3.966c-.322 1.353-.418 2.766-.275 4.14a1 1 0 001.986.115c-.093-1.071-.027-2.181.203-3.266A7.07 7.07 0 0110 5a7.07 7.07 0 015.568 2.875c.23.685.296 1.352.203 2.053a1 1 0 101.986.115c.143-1.374.047-2.787-.275-4.14A8.975 8.975 0 0015 3.126V3a1 1 0 012 0v2a1 1 0 01-1 1h-2a1 1 0 010-2h.586A8.966 8.966 0 0010 3.013 8.966 8.966 0 004.414 5H5a1 1 0 010 2H3a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    重新整理數據
+                </button>
+                
+                <!-- NEW: Back to Registration Form Link -->
+                <a href="./registration_form.html" class="px-6 py-2 bg-deep-blue text-white text-sm font-bold rounded-full shadow-md hover:bg-vibrant-purple transition duration-200 transform hover:scale-105 inline-flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                    </svg>
+                    返回報名頁面
+                </a>
+            </div>
         </header>
 
         <!-- Status Message -->

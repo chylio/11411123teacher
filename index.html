@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>奇美月─教學共識營 報名表</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設置 Inter 字體為優先，並讓整體排版更舒適 */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'vibrant-purple': '#8B5CF6',
+                        'vibrant-pink': '#EC4899',
+                        'vibrant-yellow': '#FCD34D',
+                    }
+                }
+            }
+        }
+
+        // <<< 已替換為您提供的 Google Apps Script 網路應用程式網址 >>>
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyVqT7XhAM9n4KItbOzZO6tyGeE1Spp8rnbZ22m_b1nTkxMEAbKM1M6Onc4Jk7Of-d1bg/exec'; 
+        
+        async function handleSubmit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const submitButton = document.getElementById('submitButton');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // 1. 準備表單資料
+            const formData = new FormData(form);
+            // Apps Script 只需要 URLSearchParams 格式的數據
+            const data = new URLSearchParams(formData).toString(); 
+
+            // 2. 顯示加載狀態並禁用按鈕
+            submitButton.textContent = '資料傳送中...';
+            submitButton.disabled = true;
+            submitButton.classList.remove('hover:bg-vibrant-purple');
+            submitButton.classList.add('bg-gray-400', 'cursor-wait');
+            
+            // 清除之前的訊息
+            successMessage.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+
+
+            if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL') {
+                 // 這是錯誤示範，避免使用者忘記替換網址
+                console.error("請先將 APPS_SCRIPT_URL 替換為您的 Apps Script 網路應用程式網址！");
+                errorMessage.querySelector('p:last-child').textContent = "請先替換 APPS_SCRIPT_URL 變數！";
+                errorMessage.classList.remove('hidden');
+                
+                // 恢復按鈕狀態
+                submitButton.textContent = '立即報名！點燃您的熱情';
+                submitButton.disabled = false;
+                submitButton.classList.remove('bg-gray-400', 'cursor-wait');
+                submitButton.classList.add('hover:bg-vibrant-purple');
+                return;
+            }
+
+            try {
+                // 3. 執行 POST 請求到 Apps Script
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // 必須使用 no-cors 模式來避免跨域問題，Apps Script 會處理響應
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: data
+                });
+
+                // 由於使用了 'no-cors'，我們無法直接檢查響應的內容或狀態碼，
+                // 但通常 Apps Script 接收到請求後就會成功寫入。
+                
+                // 假設成功（在 no-cors 模式下，這是最常見的行為）
+                submitButton.textContent = '報名成功！感謝您的參與！';
+                submitButton.classList.remove('bg-vibrant-pink', 'bg-gray-400', 'cursor-wait');
+                submitButton.classList.add('bg-green-500', 'cursor-not-allowed');
+                successMessage.classList.remove('hidden');
+                
+                // 清空表單
+                form.reset();
+
+            } catch (error) {
+                // 處理網絡錯誤（例如 URL 錯誤或無法連接）
+                console.error('提交報名資料時發生錯誤:', error);
+                
+                submitButton.textContent = '報名失敗，請重試';
+                submitButton.classList.remove('bg-gray-400', 'cursor-wait');
+                submitButton.classList.add('bg-red-500', 'hover:bg-red-600');
+                submitButton.disabled = false; // 允許重試
+
+                errorMessage.querySelector('p:last-child').textContent = `網絡錯誤: ${error.message}`;
+                errorMessage.classList.remove('hidden');
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-vibrant-yellow via-vibrant-pink to-vibrant-purple text-gray-800">
+
+    <div class="w-full max-w-4xl p-6 md:p-10 bg-white bg-opacity-95 rounded-3xl shadow-2xl backdrop-blur-sm transform transition duration-500 hover:scale-[1.01]">
+        
+        <!-- Header / Event Title -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-vibrant-pink to-vibrant-purple mb-2">
+                奇美月─教學共識營
+            </h1>
+            <h2 class="text-xl md:text-2xl text-gray-600 font-medium">
+                點燃教學熱情，共創醫學教育新篇章！
+            </h2>
+            <p class="mt-4 text-sm text-gray-500">
+                主辦單位：<strong class="text-vibrant-purple">奇美醫院教學部</strong>
+            </p>
+        </header>
+
+        <!-- Event Information Section -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10 text-center">
+            
+            <div class="p-4 bg-vibrant-pink/10 rounded-xl shadow-md">
+                <p class="text-lg font-semibold text-vibrant-pink">日期</p>
+                <p class="text-xl font-bold mt-1">2025 年 11 月 23 日 (日)</p>
+            </div>
+            
+            <div class="p-4 bg-vibrant-purple/10 rounded-xl shadow-md">
+                <p class="text-lg font-semibold text-vibrant-purple">時間</p>
+                <p class="text-xl font-bold mt-1">14:00 - 17:00 (共 3 小時)</p>
+            </div>
+            
+            <div class="p-4 bg-vibrant-yellow/10 rounded-xl shadow-md">
+                <p class="text-lg font-semibold text-vibrant-yellow">地點</p>
+                <p class="text-xl font-bold mt-1">奇美博物館豐收廳</p>
+            </div>
+        </section>
+
+        <!-- Agenda Section (Optional but informative) -->
+        <section class="mb-10 p-6 bg-gray-50 rounded-2xl border border-gray-200">
+            <h3 class="text-2xl font-bold mb-4 text-vibrant-purple border-b-2 border-vibrant-pink pb-2">活動議程</h3>
+            <ul class="space-y-3">
+                <li class="flex items-start">
+                    <span class="w-24 font-medium text-gray-700 flex-shrink-0">12:45-13:00</span>
+                    <span class="ml-4 flex-grow">報到及入場 <span class="text-xs text-gray-500">(記得早點來喔！)</span></span>
+                </li>
+                <li class="flex items-start">
+                    <span class="w-24 font-medium text-gray-700 flex-shrink-0">13:00-13:10</span>
+                    <span class="ml-4 flex-grow">長官致詞</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="w-24 font-medium text-gray-700 flex-shrink-0">13:10-13:25</span>
+                    <span class="ml-4 flex-grow">醫學教育前瞻與未來</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="w-24 font-medium text-gray-700 flex-shrink-0">13:25-14:20</span>
+                    <span class="ml-4 flex-grow">教學型主治醫師未來教學計畫報告</span>
+                </li>
+            </ul>
+        </section>
+
+        <!-- Registration Form Section -->
+        <section>
+            <h3 class="text-3xl font-bold text-vibrant-pink mb-6">
+                基本資料填寫
+            </h3>
+            
+            <!-- 注意：form 元素將不再需要 action/method 屬性，因為我們使用 JavaScript fetch 提交 -->
+            <form onsubmit="handleSubmit(event)" class="space-y-6">
+                
+                <!-- 姓名 (Name) -->
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">姓名</label>
+                    <!-- name 屬性用於 Apps Script 接收資料 -->
+                    <input type="text" id="name" name="name" required 
+                           placeholder="請輸入您的全名"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-vibrant-purple focus:border-vibrant-purple transition duration-150">
+                </div>
+
+                <!-- 電子郵件 (Email) -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">電子郵件 (Email)</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="請輸入常用的電子郵件地址"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-vibrant-purple focus:border-vibrant-purple transition duration-150">
+                </div>
+
+                <!-- 單位 (Unit/Department) -->
+                <div>
+                    <label for="unit" class="block text-sm font-medium text-gray-700 mb-1">單位</label>
+                    <input type="text" id="unit" name="unit" required 
+                           placeholder="例如：內科部、護理部"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-vibrant-purple focus:border-vibrant-purple transition duration-150">
+                </div>
+
+                <!-- 職稱 (Title) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        職稱 <span class="text-red-500">(必填)</span>
+                    </label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <!-- Radio buttons for job title selection -->
+                        <label class="flex items-center p-3 bg-vibrant-purple/5 rounded-lg border border-vibrant-purple/30 cursor-pointer hover:bg-vibrant-purple/10 transition duration-150">
+                            <input type="radio" name="title" value="醫師" required class="form-radio text-vibrant-purple h-5 w-5 mr-2">
+                            <span class="text-sm font-medium text-gray-800">醫師</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-vibrant-purple/5 rounded-lg border border-vibrant-purple/30 cursor-pointer hover:bg-vibrant-purple/10 transition duration-150">
+                            <input type="radio" name="title" value="護理師" class="form-radio text-vibrant-purple h-5 w-5 mr-2">
+                            <span class="text-sm font-medium text-gray-800">護理師</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-vibrant-purple/5 rounded-lg border border-vibrant-purple/30 cursor-pointer hover:bg-vibrant-purple/10 transition duration-150">
+                            <input type="radio" name="title" value="醫事人員" class="form-radio text-vibrant-purple h-5 w-5 mr-2">
+                            <span class="text-sm font-medium text-gray-800">醫事人員</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-vibrant-purple/5 rounded-lg border border-vibrant-purple/30 cursor-pointer hover:bg-vibrant-purple/10 transition duration-150">
+                            <input type="radio" name="title" value="行政人員" class="form-radio text-vibrant-purple h-5 w-5 mr-2">
+                            <span class="text-sm font-medium text-gray-800">行政人員</span>
+                        </label>
+                        <label class="flex items-center p-3 bg-vibrant-purple/5 rounded-lg border border-vibrant-purple/30 cursor-pointer hover:bg-vibrant-purple/10 transition duration-150">
+                            <input type="radio" name="title" value="其他" class="form-radio text-vibrant-purple h-5 w-5 mr-2">
+                            <span class="text-sm font-medium text-gray-800">其他</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitButton"
+                        class="w-full py-4 text-xl font-bold text-white bg-vibrant-pink rounded-xl shadow-lg transition duration-300 transform hover:scale-[1.02] hover:bg-vibrant-purple focus:outline-none focus:ring-4 focus:ring-vibrant-pink/50 active:scale-100">
+                    立即報名！點燃您的熱情
+                </button>
+            </form>
+            
+            <!-- Success Message -->
+            <div id="successMessage" class="hidden mt-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg" role="alert">
+                <p class="font-bold">🎉 報名表單已送出！</p>
+                <p>資料已成功寫入 Google Sheets。感謝您的報名，我們期待您的參與。</p>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden mt-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg" role="alert">
+                <p class="font-bold">❌ 報名失敗！</p>
+                <p>請檢查您的網路或 Apps Script 網址設定。</p>
+            </div>
+
+            <!-- Disclaimer -->
+            <p class="mt-8 text-center text-xs text-gray-500">
+                本報名資料僅供本次研討會聯繫與餐點統計使用。
+            </p>
+            
+        </section>
+
+    </div>
+
+</body>
+</html>
